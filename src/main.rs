@@ -1,3 +1,6 @@
+use colored_print::color::ConsoleColor as CC;
+use colored_print::colored_println;
+
 use std::env;
 use std::fmt;
 use std::fs;
@@ -53,17 +56,29 @@ impl Test {
     }
 }
 
+impl TestResult {
+    fn get_color(&self) -> CC {
+        match *self {
+            TestResult::Succeeded => CC::LightGreen,
+            TestResult::Failed => CC::Red,
+            TestResult::NotFound => CC::Yellow,
+        }
+    }
+}
+
 impl fmt::Display for TestResult {
     fn fmt(&self, b: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            TestResult::Succeeded => write!(b, "[  OK  ]"),
-            TestResult::Failed => write!(b, "[FAILED]"),
-            TestResult::NotFound => write!(b, "[ENOENT]"),
+            TestResult::Succeeded => write!(b, "  OK  "),
+            TestResult::Failed => write!(b, "FAILED"),
+            TestResult::NotFound => write!(b, "ENOENT"),
         }
     }
 }
 
 fn main() -> Result<()> {
+    let colorize = atty::is(atty::Stream::Stdout);
+
     let library_root = find_lib_root()?;
     println!("found library root at {}", library_root.display());
 
@@ -72,19 +87,30 @@ fn main() -> Result<()> {
     let (mut success, mut failure) = (0, 0);
     for test in tests {
         let result = test.judge()?;
+        let color = result.get_color();
+
+        colored_println! {
+            colorize;
+            CC::Reset, "[";
+            color, "{}", result;
+            CC::Reset, "] {}", test.library.display();
+        }
+
         match result {
             TestResult::Succeeded => success += 1,
             TestResult::Failed => failure += 1,
             TestResult::NotFound => failure += 1,
         }
-        println!("{} {}", result, test.library.display());
     }
-    println!(
-        "test finished. {} total, {} succeeded, {} failed.",
-        success + failure,
-        success,
-        failure
-    );
+    colored_println! {
+        colorize;
+        CC::Reset, "test finished. ";
+        CC::Reset, "{} total, ", success + failure;
+        TestResult::Succeeded.get_color(), "{} ", success;
+        CC::Reset, "succeeded, ";
+        TestResult::Failed.get_color(), "{} ", failure;
+        CC::Reset, "failed.";
+    };
 
     if failure != 0 {
         Err("some test failed.".into())
