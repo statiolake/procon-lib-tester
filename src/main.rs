@@ -84,7 +84,7 @@ fn main() -> Result<()> {
 
     let tests = enumerate_tests(&library_root)?;
 
-    let (mut success, mut failure) = (0, 0);
+    let (mut success, mut failure, mut notfound) = (0, 0, 0);
     for test in tests {
         let result = test.judge()?;
         let color = result.get_color();
@@ -99,13 +99,15 @@ fn main() -> Result<()> {
         match result {
             TestResult::Succeeded => success += 1,
             TestResult::Failed => failure += 1,
-            TestResult::NotFound => failure += 1,
+            TestResult::NotFound => notfound += 1,
         }
     }
     colored_println! {
         colorize;
         CC::Reset, "test finished. ";
-        CC::Reset, "{} total, ", success + failure;
+        CC::Reset, "{} total, ", success + failure + notfound;
+        TestResult::NotFound.get_color(), "{} ", notfound;
+        CC::Reset, "skipped, ";
         TestResult::Succeeded.get_color(), "{} ", success;
         CC::Reset, "succeeded, ";
         TestResult::Failed.get_color(), "{} ", failure;
