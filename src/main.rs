@@ -69,9 +69,9 @@ impl TestResult {
 impl fmt::Display for TestResult {
     fn fmt(&self, b: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            TestResult::Succeeded => write!(b, "  OK  "),
-            TestResult::Failed => write!(b, "FAILED"),
-            TestResult::NotFound => write!(b, "ENOENT"),
+            TestResult::Succeeded => write!(b, "SUCCESS"),
+            TestResult::Failed => write!(b, "FAILURE"),
+            TestResult::NotFound => write!(b, "MISSING"),
         }
     }
 }
