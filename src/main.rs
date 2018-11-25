@@ -15,6 +15,14 @@ struct Test {
     project: PathBuf,
 }
 
+/// テスト結果を表す列挙体です。
+#[derive(Debug)]
+enum TestResult {
+    Succeeded,
+    Failed,
+    NotFound,
+}
+
 impl Test {
     pub fn new(library: PathBuf) -> Test {
         let project = library.with_extension("test");
