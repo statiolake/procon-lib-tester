@@ -1,7 +1,9 @@
 use std::env;
+use std::fmt;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -28,6 +30,37 @@ impl Test {
         let project = library.with_extension("test");
         Test { library, project }
     }
+
+    pub fn judge(&self) -> io::Result<TestResult> {
+        if !self.project.exists() {
+            return Ok(TestResult::NotFound);
+        }
+
+        let success = Command::new("procon-assistant")
+            .arg("run")
+            .current_dir(&self.project)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()?
+            .success();
+
+        if success {
+            Ok(TestResult::Succeeded)
+        } else {
+            Ok(TestResult::Failed)
+        }
+    }
+}
+
+impl fmt::Display for TestResult {
+    fn fmt(&self, b: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            TestResult::Succeeded => write!(b, "[  OK  ]"),
+            TestResult::Failed => write!(b, "[FAILED]"),
+            TestResult::NotFound => write!(b, "[ENOENT]"),
+        }
+    }
 }
 
 fn main() -> Result<()> {
@@ -36,11 +69,28 @@ fn main() -> Result<()> {
 
     let tests = enumerate_tests(&library_root)?;
 
+    let (mut success, mut failure) = (0, 0);
     for test in tests {
-        println!("found test: {:?}", test);
+        let result = test.judge()?;
+        match result {
+            TestResult::Succeeded => success += 1,
+            TestResult::Failed => failure += 1,
+            TestResult::NotFound => failure += 1,
+        }
+        println!("{} {}", result, test.library.display());
     }
+    println!(
+        "test finished. {} total, {} succeeded, {} failed.",
+        success + failure,
+        success,
+        failure
+    );
 
-    Ok(())
+    if failure != 0 {
+        Err("some test failed.".into())
+    } else {
+        Ok(())
+    }
 }
 
 /// ライブラリのルートディレクトリかどうか確認します。
