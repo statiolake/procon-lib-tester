@@ -77,7 +77,16 @@ impl fmt::Display for TestResult {
 }
 
 fn main() -> Result<()> {
-    let colorize = atty::is(atty::Stream::Stdout);
+    let args = env::args().skip(1); // skip executable name
+    let mut colorize = atty::is(atty::Stream::Stdout);
+    for arg in args {
+        match &*arg {
+            "--color=always" => colorize = true,
+            "--color=none" => colorize = false,
+            "--color=auto" => {}
+            arg => return Err(format!("unknown command line argument: {}", arg).into()),
+        }
+    }
 
     let library_root = find_lib_root()?;
     println!("found library root at {}", library_root.display());
