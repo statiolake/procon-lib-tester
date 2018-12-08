@@ -41,6 +41,7 @@ impl Test {
 
         let success = Command::new("procon-assistant")
             .arg("run")
+            .arg("--force")
             .current_dir(&self.project)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
