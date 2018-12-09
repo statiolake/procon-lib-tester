@@ -5,7 +5,7 @@ use std::env;
 use std::fmt;
 use std::fs;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::{Path, PathBuf, MAIN_SEPARATOR};
 use std::process::{Command, Stdio};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -77,6 +77,21 @@ impl fmt::Display for TestResult {
     }
 }
 
+fn path_root_removed(path: &Path, root: &Path) -> String {
+    let path = path.display().to_string();
+    let root = {
+        let mut root = root.display().to_string();
+        root.push(MAIN_SEPARATOR);
+        root
+    };
+
+    if path.starts_with(&root) {
+        format!("{}", &path[root.len()..])
+    } else {
+        path
+    }
+}
+
 fn main() -> Result<()> {
     let args = env::args().skip(1); // skip executable name
     let mut colorize = atty::is(atty::Stream::Stdout);
@@ -103,7 +118,7 @@ fn main() -> Result<()> {
             colorize;
             CC::Reset, "[";
             color, "{}", result;
-            CC::Reset, "] {}", test.library.display();
+            CC::Reset, "] {}", path_root_removed(&test.library, &library_root);
         }
 
         match result {
