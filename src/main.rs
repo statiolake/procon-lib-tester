@@ -34,15 +34,19 @@ impl Test {
         Test { library, project }
     }
 
-    pub fn judge(&self) -> io::Result<TestResult> {
+    pub fn judge(&self, force: bool) -> io::Result<TestResult> {
         if !self.project.exists() {
             return Ok(TestResult::NotFound);
         }
 
-        let success = Command::new("procon-assistant")
-            .arg("run")
-            .arg("--force")
-            .current_dir(&self.project)
+        let mut cmd = Command::new("procon-assistant");
+        cmd.arg("run");
+
+        if force {
+            cmd.arg("--force");
+        }
+
+        let success = cmd.current_dir(&self.project)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -95,11 +99,13 @@ fn path_root_removed(path: &Path, root: &Path) -> String {
 fn main() -> Result<()> {
     let args = env::args().skip(1); // skip executable name
     let mut colorize = atty::is(atty::Stream::Stdout);
+    let mut force = true;
     for arg in args {
         match &*arg {
             "--color=always" => colorize = true,
             "--color=none" => colorize = false,
             "--color=auto" => {}
+            "--no-force" | "-n" => force = false,
             arg => return Err(format!("unknown command line argument: {}", arg).into()),
         }
     }
@@ -111,7 +117,7 @@ fn main() -> Result<()> {
 
     let (mut success, mut failure, mut notfound) = (0, 0, 0);
     for test in tests {
-        let result = test.judge()?;
+        let result = test.judge(force)?;
         let color = result.get_color();
 
         colored_println! {
