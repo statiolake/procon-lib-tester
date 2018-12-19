@@ -34,24 +34,31 @@ impl Test {
         Test { library, project }
     }
 
-    pub fn judge(&self, force: bool) -> io::Result<TestResult> {
+    pub fn judge(&self, force: bool, simple: bool) -> io::Result<TestResult> {
         if !self.project.exists() {
             return Ok(TestResult::NotFound);
         }
 
         let mut cmd = Command::new("procon-assistant");
+        cmd.arg("--quiet");
+
         cmd.arg("run");
 
         if force {
             cmd.arg("--force");
         }
 
-        let success = cmd.current_dir(&self.project)
+        cmd.current_dir(&self.project)
             .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()?
-            .success();
+            .stdout(Stdio::null());
+
+        if simple {
+            cmd.stderr(Stdio::null());
+        } else {
+            cmd.stderr(Stdio::inherit());
+        }
+
+        let success = cmd.status()?.success();
 
         if success {
             Ok(TestResult::Succeeded)
@@ -100,12 +107,14 @@ fn main() -> Result<()> {
     let args = env::args().skip(1); // skip executable name
     let mut colorize = atty::is(atty::Stream::Stdout);
     let mut force = true;
+    let mut simple = false;
     for arg in args {
         match &*arg {
             "--color=always" => colorize = true,
             "--color=none" => colorize = false,
             "--color=auto" => {}
             "--no-force" | "-n" => force = false,
+            "--simple" | "-s" => simple = true,
             arg => return Err(format!("unknown command line argument: {}", arg).into()),
         }
     }
@@ -117,7 +126,7 @@ fn main() -> Result<()> {
 
     let (mut success, mut failure, mut notfound) = (0, 0, 0);
     for test in tests {
-        let result = test.judge(force)?;
+        let result = test.judge(force, simple)?;
         let color = result.get_color();
 
         colored_println! {
